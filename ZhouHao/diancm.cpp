@@ -1,4 +1,4 @@
-ï»¿//==============================================================================
+//==============================================================================
 
 //  the automation code. Any modifications to this file will be lost after
 //  generating the code again.
@@ -13,7 +13,7 @@
 //
 //==============================================================================
 //==============================================================================
-//  Implementation: ç‚¹é€‰å¤åˆ¶/ç§»åŠ¨å¯¹è¯æ¡†
+//  Implementation: µãÑ¡¸´ÖÆ/ÒÆ¶¯¶Ô»°¿ò
 //  Provides point-to-point translation move/copy via Block Styler dialog.
 //  Architecture:
 //    - Anonymous namespace for pure utility functions (geometry, transform)
@@ -69,14 +69,12 @@ using namespace NXOpen::BlockStyler;
 #include "diancm.hpp"
 
 //==============================================================================
-//  Anonymous namespace â€” reusable utilities shared across the translation unit
+//  Anonymous namespace ¡ª reusable utilities shared across the translation unit
 //==============================================================================
 namespace
 {
 
-//--------------------------------------------------------------------------
-//  Enums â€” mirror the DLX enumeration values set in Block Styler
-//--------------------------------------------------------------------------
+//  Enums ¡ª mirror the DLX enumeration values set in Block Styler
 enum class StartPointMode
 {
     BodyCenterTop    = 0,
@@ -96,9 +94,7 @@ enum class FinishPointMode
     ZZero      = 6
 };
 
-//--------------------------------------------------------------------------
-//  DLX path resolution â€” look beside the DLL first, fall back to raw name
-//--------------------------------------------------------------------------
+//  DLX path resolution ¡ª look beside the DLL first, fall back to raw name
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 std::string GetDllDirectory()
@@ -122,17 +118,13 @@ std::string ResolveDlxPath(const char* dlxName)
     return dlxName;
 }
 
-//--------------------------------------------------------------------------
 //  Geometry helpers
-//--------------------------------------------------------------------------
 double VectorLength(const Vector3d& v)
 {
     return std::sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z);
 }
 
-//--------------------------------------------------------------------------
 //  Tag resolution helpers
-//--------------------------------------------------------------------------
 tag_t ResolveBodyTag(TaggedObject* obj)
 {
     if (!obj) return NULL_TAG;
@@ -152,9 +144,7 @@ tag_t ResolveBodyTag(TaggedObject* obj)
     return NULL_TAG;
 }
 
-//--------------------------------------------------------------------------
 //  Selection helpers
-//--------------------------------------------------------------------------
 std::vector<NXOpen::Body*> CollectTransformBodies(BlockStyler::SelectObject* sel)
 {
     std::vector<NXOpen::Body*> bodies;
@@ -177,9 +167,7 @@ TaggedObject* PrimarySelection(BlockStyler::SelectObject* sel)
     return objects.empty() ? nullptr : objects.front();
 }
 
-//--------------------------------------------------------------------------
 //  Point resolution
-//--------------------------------------------------------------------------
 
 Point3d AskBoxCenter(tag_t objectTag)
 {
@@ -188,7 +176,7 @@ Point3d AskBoxCenter(tag_t objectTag)
     if (err != 0)
     {
         std::ostringstream ss;
-        ss << "è¯»å–åŒ…å›´ç›’å¤±è´¥ï¼Œé”™è¯¯ç  " << err;
+        ss << "¶ÁÈ¡°üÎ§ºĞÊ§°Ü£¬´íÎóÂë " << err;
         throw std::runtime_error(ss.str());
     }
     return Point3d((box[0] + box[3]) * 0.5,
@@ -203,7 +191,7 @@ Point3d AskBodyPoint(tag_t bodyTag, StartPointMode mode)
     if (err != 0)
     {
         std::ostringstream ss;
-        ss << "è¯»å–ä½“åŒ…å›´ç›’å¤±è´¥ï¼Œé”™è¯¯ç  " << err;
+        ss << "¶ÁÈ¡Ìå°üÎ§ºĞÊ§°Ü£¬´íÎóÂë " << err;
         throw std::runtime_error(ss.str());
     }
 
@@ -225,7 +213,7 @@ Point3d ResolveStartPoint(StartPointMode mode,
                           BlockStyler::SpecifyPoint* manualPt)
 {
     if (!primary)
-        throw std::runtime_error("è¯·å…ˆé€‰æ‹©æ“ä½œå¯¹è±¡");
+        throw std::runtime_error("ÇëÏÈÑ¡Ôñ²Ù×÷¶ÔÏó");
 
     if (mode == StartPointMode::FaceCenter)
     {
@@ -233,12 +221,12 @@ Point3d ResolveStartPoint(StartPointMode mode,
             return AskBoxCenter(face->Tag());
         if (manualPt)
             return manualPt->Point();
-        throw std::runtime_error("èµ·å§‹ç‚¹ä¸ºé¢ä¸­å¿ƒæ—¶ï¼Œè¯·é€‰æ‹©é¢æˆ–æ‰‹åŠ¨æŒ‡å®šç‚¹");
+        throw std::runtime_error("ÆğÊ¼µãÎªÃæÖĞĞÄÊ±£¬ÇëÑ¡ÔñÃæ»òÊÖ¶¯Ö¸¶¨µã");
     }
 
     tag_t bodyTag = ResolveBodyTag(primary);
     if (bodyTag == NULL_TAG)
-        throw std::runtime_error("æ— æ³•ä»é€‰æ‹©å¯¹è±¡è§£æä½“");
+        throw std::runtime_error("ÎŞ·¨´ÓÑ¡Ôñ¶ÔÏó½âÎöÌå");
     return AskBodyPoint(bodyTag, mode);
 }
 
@@ -263,7 +251,7 @@ Point3d ResolveFinishPoint(FinishPointMode mode,
         case FinishPointMode::BodyCenter:
         {
             if (!primary)
-                throw std::runtime_error("ç»“æŸç‚¹ä¸ºä½“ä¸­å¿ƒæ—¶ï¼Œè¯·é€‰æ‹©æ“ä½œå¯¹è±¡");
+                throw std::runtime_error("½áÊøµãÎªÌåÖĞĞÄÊ±£¬ÇëÑ¡Ôñ²Ù×÷¶ÔÏó");
             tag_t t = ResolveBodyTag(primary);
             return AskBoxCenter(t);
         }
@@ -274,7 +262,7 @@ Point3d ResolveFinishPoint(FinishPointMode mode,
             return AskBoxCenter(face->Tag());
             if (manualPt)
                 return manualPt->Point();
-            throw std::runtime_error("ç»“æŸç‚¹ä¸ºé¢ä¸­å¿ƒæ—¶ï¼Œè¯·é€‰æ‹©é¢æˆ–æ‰‹åŠ¨æŒ‡å®šç‚¹");
+            throw std::runtime_error("½áÊøµãÎªÃæÖĞĞÄÊ±£¬ÇëÑ¡ÔñÃæ»òÊÖ¶¯Ö¸¶¨µã");
         }
 
         case FinishPointMode::XZero:
@@ -285,21 +273,20 @@ Point3d ResolveFinishPoint(FinishPointMode mode,
             return Point3d(startPt.X, startPt.Y, 0.0);
 
         default:
-            throw std::runtime_error("æœªçŸ¥çš„ç»“æŸç‚¹æ¨¡å¼");
+            throw std::runtime_error("Î´ÖªµÄ½áÊøµãÄ£Ê½");
     }
 }
 
-//--------------------------------------------------------------------------
 void ExecuteMoveCopy(const std::vector<NXOpen::Body*>& bodies,
                      const Point3d& startPt,
                      const Point3d& endPt,
                      bool isCopy)
 {
     if (bodies.empty())
-        throw std::runtime_error("è¯·é€‰æ‹©æ“ä½œå¯¹è±¡");
+        throw std::runtime_error("ÇëÑ¡Ôñ²Ù×÷¶ÔÏó");
 
     if (VectorLength(Vector3d(endPt.X - startPt.X, endPt.Y - startPt.Y, endPt.Z - startPt.Z)) < 1.0e-9)
-        throw std::runtime_error("èµ·å§‹ç‚¹å’Œç»“æŸç‚¹é‡åˆï¼Œä¸èƒ½æ‰§è¡Œé›¶å‘é‡ç§»åŠ¨/å¤åˆ¶");
+        throw std::runtime_error("ÆğÊ¼µãºÍ½áÊøµãÖØºÏ£¬²»ÄÜÖ´ĞĞÁãÏòÁ¿ÒÆ¶¯/¸´ÖÆ");
     Session* session = Session::GetSession();
     Part* workPart = session->Parts()->Work();
 
@@ -333,9 +320,7 @@ void ExecuteMoveCopy(const std::vector<NXOpen::Body*>& bodies,
     }
 }
 
-//--------------------------------------------------------------------------
-//  Point block helper â€” mark as Optional so user-click state is trackable
-//--------------------------------------------------------------------------
+//  Point block helper ¡ª mark as Optional so user-click state is trackable
 void SetPointOptional(NXOpen::BlockStyler::SpecifyPoint* ptBlock)
 {
     if (!ptBlock) return;
@@ -360,16 +345,16 @@ UI* (diancm::theUI) = nullptr;
 //  Constructor
 //==============================================================================
 diancm::diancm()
-    : m_opMode(OpMode::None), m_startPtSpecified(false), m_endPtSpecified(false), m_startPtClicked(false)
+    : m_opMode(OpMode::None), m_startPtSpecified(false), m_endPtSpecified(false)
 {
-    try
-    {
+   try
+   {
         diancm::theSession = Session::GetSession();
-        diancm::theUI = UI::GetUI();
+       diancm::theUI = UI::GetUI();
 
+        // static ±£Ö¤ dlxPath ÔÚ DLL ÉúÃüÖÜÆÚÄÚ²»Îö¹¹£¬c_str() Ö¸Õë³Ö¾ÃÓĞĞ§
         static std::string dlxPath = ResolveDlxPath("diancm.dlx");
         theDlxFileName = dlxPath.c_str();
-
         theDialog = diancm::theUI->CreateDialog(theDlxFileName);
 
         theDialog->AddApplyHandler(make_callback(this, &diancm::apply_cb));
@@ -424,15 +409,7 @@ extern "C" DllExport int ufusr_ask_unload()
 
 extern "C" DllExport void ufusr_cleanup(void)
 {
-    try
-    {
-        // cleanup if needed
-    }
-    catch (const exception& ex)
-    {
-        diancm::theUI->NXMessageBox()->Show(
-            "Block Styler", NXMessageBox::DialogTypeError, ex.what());
-    }
+    // Ô¤ÁôÇåÀíÈë¿Ú£¬µ±Ç°ÎŞÇåÀí²Ù×÷
 }
 
 //==============================================================================
@@ -457,9 +434,7 @@ BlockDialog::DialogResponse diancm::Launch()
 //  Callbacks
 //==============================================================================
 
-//------------------------------------------------------------------------------
-//  initialize_cb â€” bind UI blocks to member pointers
-//------------------------------------------------------------------------------
+//  initialize_cb ¡ª bind UI blocks to member pointers
 void diancm::initialize_cb()
 {
     try
@@ -489,9 +464,7 @@ void diancm::initialize_cb()
     }
 }
 
-//------------------------------------------------------------------------------
 //  dialogShown_cb
-//------------------------------------------------------------------------------
 void diancm::dialogShown_cb()
 {
     try
@@ -505,9 +478,7 @@ void diancm::dialogShown_cb()
     }
 }
 
-//------------------------------------------------------------------------------
-//  update_cb â€” handle UI interactions
-//------------------------------------------------------------------------------
+//  update_cb ¡ª handle UI interactions
 int diancm::update_cb(BlockStyler::UIBlock* block)
 {
     try
@@ -534,7 +505,7 @@ int diancm::update_cb(BlockStyler::UIBlock* block)
         }
         else if (block == point0)
         {
-            m_startPtClicked = true;
+            // point0 ±»µãÑ¡¡ª¡ª±£ÁôÅĞ¶Ï·ÖÖ§±¸²é
         }
         else if (block == point01)
         {
@@ -553,29 +524,27 @@ int diancm::update_cb(BlockStyler::UIBlock* block)
     return 0;
 }
 
-//------------------------------------------------------------------------------
-//  apply_cb â€” core logic: resolve points â†’ execute transform
-//------------------------------------------------------------------------------
+//  apply_cb ¡ª core logic: resolve points ¡ú execute transform
 int diancm::apply_cb()
 {
     int errorCode = 0;
     Session::UndoMarkId undoMark = theSession->SetUndoMark(
-        Session::MarkVisibilityVisible, "ç‚¹é€‰æ‹©ç§»åŠ¨/å¤åˆ¶");
+        Session::MarkVisibilityVisible, "µãÑ¡ÔñÒÆ¶¯/¸´ÖÆ");
 
     try
     {
         if (m_opMode == OpMode::None)
-            throw std::runtime_error("è¯·å…ˆç‚¹å‡»ã€Œç§»åŠ¨ã€æˆ–ã€Œå¤åˆ¶ã€æŒ‰é’®é€‰æ‹©æ“ä½œæ¨¡å¼");
+            throw std::runtime_error("ÇëÏÈµã»÷¡¸ÒÆ¶¯¡¹»ò¡¸¸´ÖÆ¡¹°´Å¥Ñ¡Ôñ²Ù×÷Ä£Ê½");
 
         TaggedObject* primary = PrimarySelection(selection0);
         if (!primary)
-            throw std::runtime_error("è¯·é€‰æ‹©æ“ä½œå¯¹è±¡");
+            throw std::runtime_error("ÇëÑ¡Ôñ²Ù×÷¶ÔÏó");
 
         std::vector<NXOpen::Body*> selectedBodies = CollectTransformBodies(selection0);
         if (selectedBodies.empty())
-            throw std::runtime_error("æœªé€‰ä¸­æœ‰æ•ˆä½“å¯¹è±¡");
+            throw std::runtime_error("Î´Ñ¡ÖĞÓĞĞ§Ìå¶ÔÏó");
 
-        // Resolve start point â€” manual point overrides enum mode
+        // Resolve start point ¡ª manual point overrides enum mode
         Point3d start;
         if (m_startPtSpecified && point0)
         {
@@ -587,7 +556,7 @@ int diancm::apply_cb()
             start = ResolveStartPoint(startMode, primary, point0);
         }
 
-        // Resolve end point â€” manual point overrides enum mode
+        // Resolve end point ¡ª manual point overrides enum mode
         Point3d finish;
         if (m_endPtSpecified && point01)
         {
@@ -607,38 +576,24 @@ int diancm::apply_cb()
     catch (const NXException& ex)
     {
         errorCode = 1;
-        theSession->UndoToMark(undoMark, "ç‚¹é€‰æ‹©ç§»åŠ¨/å¤åˆ¶");
+        theSession->UndoToMark(undoMark, "µãÑ¡ÔñÒÆ¶¯/¸´ÖÆ");
         diancm::theUI->NXMessageBox()->Show(
-            "é”™è¯¯", NXMessageBox::DialogTypeError, ex.Message());
+            "´íÎó", NXMessageBox::DialogTypeError, ex.Message());
     }
     catch (const std::exception& ex)
     {
         errorCode = 1;
-        theSession->UndoToMark(undoMark, "ç‚¹é€‰æ‹©ç§»åŠ¨/å¤åˆ¶");
+        theSession->UndoToMark(undoMark, "µãÑ¡ÔñÒÆ¶¯/¸´ÖÆ");
         diancm::theUI->NXMessageBox()->Show(
-            "æç¤º", NXMessageBox::DialogTypeInformation, ex.what());
+            "ÌáÊ¾", NXMessageBox::DialogTypeInformation, ex.what());
     }
 
     return errorCode;
 }
 
-//------------------------------------------------------------------------------
-//  ok_cb â€” delegates to apply_cb
-//------------------------------------------------------------------------------
 int diancm::ok_cb()
 {
-    int errorCode = 0;
-    try
-    {
-        errorCode = apply_cb();
-    }
-    catch (const exception& ex)
-    {
-        errorCode = 1;
-        diancm::theUI->NXMessageBox()->Show(
-            "Block Styler", NXMessageBox::DialogTypeError, ex.what());
-    }
-    return errorCode;
+    return apply_cb();
 }
 
 //==============================================================================
@@ -649,25 +604,7 @@ PropertyList* diancm::GetBlockProperties(const char* blockID)
     return theDialog->GetBlockProperties(blockID);
 }
 
-//------------------------------------------------------------------------------
-//  GetSelectedObjects â€” returns list of NXObjects from selection block
-//------------------------------------------------------------------------------
-std::vector<NXObject*> diancm::GetSelectedObjects()
-{
-    std::vector<NXObject*> result;
-    if (!selection0) return result;
-
-    for (auto* obj : selection0->GetSelectedObjects())
-    {
-        if (auto* nxObj = dynamic_cast<NXObject*>(obj))
-            result.push_back(nxObj);
-    }
-    return result;
-}
-
-//------------------------------------------------------------------------------
-//  GetEnumValue â€” safe enumeration value extraction
-//------------------------------------------------------------------------------
+//  GetEnumValue ¡ª safe enumeration value extraction
 int diancm::GetEnumValue(NXOpen::BlockStyler::Enumeration* enumBlock)
 {
     if (!enumBlock) return 0;
@@ -675,10 +612,7 @@ int diancm::GetEnumValue(NXOpen::BlockStyler::Enumeration* enumBlock)
     return props ? props->GetEnum("Value") : 0;
 }
 
-//------------------------------------------------------------------------------
-//  UpdateStartPointUI â€” enable/disable start point enum based on selection count
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
+//  UpdateStartPointUI ¡ª enable/disable start point enum based on selection count
 void diancm::UpdateStartPointUI()
 {
     if (!selection0 || !enum0 || !point0 || !toggle0) return;
@@ -710,6 +644,5 @@ void diancm::UpdateStartPointUI()
     {
         enum0->SetEnable(true);
         m_startPtSpecified = false;
-        m_startPtClicked = false;
     }
 }
