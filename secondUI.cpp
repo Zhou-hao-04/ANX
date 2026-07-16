@@ -101,44 +101,28 @@ void secondUI::dialogShown_cb() {}
 //----------------------------------------------------------------------
 // 核心执行（纯 NXOpen API）
 //----------------------------------------------------------------------
-int secondUI::apply_cb()
-{
-    int err = 0;
-    try
-    {
-        Body *body = GetBody(selection0);
-        if (!body) throw std::runtime_error("Select a body.");
-
-        Point3d target = point01->Point();
-        
-        Part *wp = theSession->Parts()->Work();
-        if (!wp) throw std::runtime_error("No work part.");
-
-        // 移动: 隐藏旧体
-        if (m_opMode == 0) theSession->UpdateManager()->AddToDeleteList(body);
-
-        // 在目标点创建 100x100x100 立方体
-        auto bb = wp->Features()->CreateBlockFeatureBuilder(nullptr);
-        bb->SetOriginAndLengths(
-            Point3d(target.X-50, target.Y-50, target.Z-50),
-            "100", "100", "100");
-        bb->CommitFeature();
-        bb->Destroy();
-    }
-    catch (std::exception& ex) {
-        err = 1;
-        theUI->NXMessageBox()->Show("secondUI",
-            NXOpen::NXMessageBox::DialogTypeError, ex.what());
-    }
-    return err;
-}
+int secondUI::apply_cb() { return 0; } // 操作已由按钮执行
 //----------------------------------------------------------------------
 int secondUI::update_cb(NXOpen::BlockStyler::UIBlock* block)
 {
     try
     {
-        if (block == button0) { m_opMode = 0; Log("[MOVE]"); apply_cb(); }
-        else if (block == button01) { m_opMode = 1; Log("[COPY]"); apply_cb(); }
+        auto Exec = [this]() {
+            Body *body = GetBody(this->selection0);
+            if (!body) throw std::runtime_error("Select a body.");
+            Point3d target = this->point01->Point();
+            Part *wp = this->theSession->Parts()->Work();
+            if (!wp) throw std::runtime_error("No work part.");
+            if (this->m_opMode == 0) this->theSession->UpdateManager()->AddToDeleteList(body);
+            auto bb = wp->Features()->CreateBlockFeatureBuilder(nullptr);
+            bb->SetOriginAndLengths(Point3d(target.X-50,target.Y-50,target.Z-50),
+                "100","100","100");
+            bb->CommitFeature();
+            bb->Destroy();
+        };
+
+        if (block == button0) { m_opMode = 0; Exec(); }
+        else if (block == button01) { m_opMode = 1; Exec(); }
     }
     catch(exception& ex) { secondUI::theUI->NXMessageBox()->Show("Block Styler",
         NXOpen::NXMessageBox::DialogTypeError, ex.what()); }
