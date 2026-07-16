@@ -1,4 +1,4 @@
-﻿//==============================================================================
+//==============================================================================
 //  WARNING!!  This file is overwritten by the Block Styler while generating
 //  the automation code. Any modifications to this file will be lost after
 //  generating the code again.
@@ -65,20 +65,21 @@ class DllExport secondUI
 {
     // class members
 public:
-    static Session *theSession;
-    static UI *theUI;
+    static Session* theSession;
+    static UI* theUI;
     secondUI();
     ~secondUI();
     NXOpen::BlockStyler::BlockDialog::DialogResponse Launch();
-    
+
     // BlockStyler Callback Prototypes
     void initialize_cb();
     void dialogShown_cb();
     int apply_cb();
+    int cancel_cb();
     int ok_cb();
     int update_cb(NXOpen::BlockStyler::UIBlock* block);
-    PropertyList* GetBlockProperties(const char *blockID);
-    
+    PropertyList* GetBlockProperties(const char* blockID);
+
 private:
     const char* theDlxFileName;
     NXOpen::BlockStyler::BlockDialog* theDialog;
@@ -93,7 +94,7 @@ private:
     NXOpen::BlockStyler::SpecifyPoint* point0;      // (unused)
     NXOpen::BlockStyler::Enumeration* enum0;         // Mode: Move/Copy
     int m_opMode;
-        NXOpen::BlockStyler::Group* group;
+    NXOpen::BlockStyler::Group* group;
     NXOpen::BlockStyler::SpecifyPoint* point01;      // Source point (optional)
     NXOpen::BlockStyler::Enumeration* enum01;        // Other mode (optional)
 

@@ -101,34 +101,61 @@ void secondUI::dialogShown_cb() {}
 //----------------------------------------------------------------------
 // 核心执行（纯 NXOpen API）
 //----------------------------------------------------------------------
-int secondUI::apply_cb() { return 0; } // 操作已由按钮执行
-//----------------------------------------------------------------------
-int secondUI::update_cb(NXOpen::BlockStyler::UIBlock* block)
+int secondUI::apply_cb()
 {
+    int err = 0;
     try
     {
-        auto Exec = [this]() {
-            Body *body = GetBody(this->selection0);
-            if (!body) throw std::runtime_error("Select a body.");
-            Point3d target = this->point01->Point();
-            Part *wp = this->theSession->Parts()->Work();
-            if (!wp) throw std::runtime_error("No work part.");
-            if (this->m_opMode == 0) this->theSession->UpdateManager()->AddToDeleteList(body);
+        Body *body = GetBody(selection0);
+        if (!body) throw std::runtime_error("Select a body.");
+        Point3d target = point01->Point();
+        Part *wp = theSession->Parts()->Work();
+        if (!wp) throw std::runtime_error("No work part.");
+        Session::UndoMarkId mark = theSession->SetUndoMark(
+            Session::MarkVisibilityVisible, m_opMode==0?"Move":"Copy");
+        try
+        {
+            if (m_opMode == 0) theSession->UpdateManager()->AddToDeleteList(body);
             auto bb = wp->Features()->CreateBlockFeatureBuilder(nullptr);
             bb->SetOriginAndLengths(Point3d(target.X-50,target.Y-50,target.Z-50),
                 "100","100","100");
             bb->CommitFeature();
             bb->Destroy();
-        };
-
-        if (block == button0) { m_opMode = 0; Exec(); }
-        else if (block == button01) { m_opMode = 1; Exec(); }
+            theSession->UpdateManager()->DoUpdate(mark);
+        }
+        catch (...)
+        {
+            theSession->UndoToMark(mark, NULL);
+            throw;
+        }
+    }
+    catch (std::exception& ex)
+    {
+        err = 1;
+        theUI->NXMessageBox()->Show("secondUI",
+            NXOpen::NXMessageBox::DialogTypeError, ex.what());
+    }
+    return err;
+}
+//----------------------------------------------------------------------
+int secondUI::update_cb(NXOpen::BlockStyler::UIBlock* block)
+{
+    try
+    {
+        if (block == button0) { m_opMode = 0; }
+        else if (block == button01) { m_opMode = 1; }
     }
     catch(exception& ex) { secondUI::theUI->NXMessageBox()->Show("Block Styler",
         NXOpen::NXMessageBox::DialogTypeError, ex.what()); }
     return 0;
 }
 
-int secondUI::ok_cb() { return 0; }
+int secondUI::ok_cb()
+{
+    int ec = 0;
+    try { ec = apply_cb(); }
+    catch (exception& ex) { ec = 1; }
+    return ec;
+}
 
 PropertyList* secondUI::GetBlockProperties(const char *id) { return theDialog->GetBlockProperties(id); }
