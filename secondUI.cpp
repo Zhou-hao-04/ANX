@@ -110,11 +110,12 @@ int secondUI::apply_cb()
         if (!body) throw std::runtime_error("Select a body.");
 
         Point3d target = point01->Point();
+        
         Part *wp = theSession->Parts()->Work();
         if (!wp) throw std::runtime_error("No work part.");
 
         // 移动: 隐藏旧体
-        if (m_opMode == 0) body->Blank();
+        if (m_opMode == 0) theSession->UpdateManager()->AddToDeleteList(body);
 
         // 在目标点创建 100x100x100 立方体
         auto bb = wp->Features()->CreateBlockFeatureBuilder(nullptr);

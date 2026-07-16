@@ -47,6 +47,7 @@
 #include <NXOpen/PartCollection.hxx>
 #include <NXOpen/Face.hxx>
 #include <NXOpen/Edge.hxx>
+#include <NXOpen/Update.hxx>
 
 //------------------------------------------------------------------------------
 //Bit Option for Property: SnapPointTypesEnabled
