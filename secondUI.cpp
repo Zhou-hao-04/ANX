@@ -1,4 +1,4 @@
-﻿#include "secondUI.hpp"
+#include "secondUI.hpp"
 #include <sstream>
 #include <cmath>
 
@@ -7,6 +7,9 @@ using namespace NXOpen::BlockStyler;
 
 Session *(secondUI::theSession) = NULL;
 UI *(secondUI::theUI) = NULL;
+
+static Session::UndoMarkId s_mark = (Session::UndoMarkId)0;
+static bool s_applied = false;
 
 static void Log(const char *msg)
 {
@@ -19,12 +22,13 @@ static Body *GetBody(NXOpen::BlockStyler::SelectObject *sel)
     if (!sel) return nullptr;
     auto objs = sel->GetSelectedObjects();
     if (objs.empty()) return nullptr;
-    // Try Body directly, then Face/Edge -> Body
     if (auto b = dynamic_cast<Body*>(objs[0])) return b;
     if (auto f = dynamic_cast<Face*>(objs[0])) return f->GetBody();
     if (auto e = dynamic_cast<Edge*>(objs[0])) return e->GetBody();
     return nullptr;
-}//======================================================================
+}
+
+//======================================================================
 secondUI::secondUI()
 {
     try
@@ -38,6 +42,7 @@ secondUI::secondUI()
         theDialog->AddUpdateHandler(make_callback(this, &secondUI::update_cb));
         theDialog->AddInitializeHandler(make_callback(this, &secondUI::initialize_cb));
         theDialog->AddDialogShownHandler(make_callback(this, &secondUI::dialogShown_cb));
+        theDialog->AddCancelHandler(make_callback(this, &secondUI::cancel_cb));
         m_opMode = 0;
     }
     catch(exception&) { throw; }
@@ -96,47 +101,21 @@ void secondUI::initialize_cb()
         NXOpen::NXMessageBox::DialogTypeError, ex.what()); }
 }
 
-void secondUI::dialogShown_cb() {}
+void secondUI::dialogShown_cb() { s_mark = theSession->SetUndoMark(Session::MarkVisibilityInvisible, ""); s_applied = false; }
 
-//----------------------------------------------------------------------
-// 核心执行（纯 NXOpen API）
 //----------------------------------------------------------------------
 int secondUI::apply_cb()
 {
-    int err = 0;
-    try
-    {
-        Body *body = GetBody(selection0);
-        if (!body) throw std::runtime_error("Select a body.");
-        Point3d target = point01->Point();
-        Part *wp = theSession->Parts()->Work();
-        if (!wp) throw std::runtime_error("No work part.");
-        Session::UndoMarkId mark = theSession->SetUndoMark(
-            Session::MarkVisibilityVisible, m_opMode==0?"Move":"Copy");
-        try
-        {
-            if (m_opMode == 0) theSession->UpdateManager()->AddToDeleteList(body);
-            auto bb = wp->Features()->CreateBlockFeatureBuilder(nullptr);
-            bb->SetOriginAndLengths(Point3d(target.X-50,target.Y-50,target.Z-50),
-                "100","100","100");
-            bb->CommitFeature();
-            bb->Destroy();
-            theSession->UpdateManager()->DoUpdate(mark);
-        }
-        catch (...)
-        {
-            theSession->UndoToMark(mark, NULL);
-            throw;
-        }
+    Body *oldBody = GetBody(selection0);
+    if (oldBody && m_opMode == 0) {
+        theSession->UpdateManager()->AddToDeleteList(oldBody);
+        theSession->UpdateManager()->DoUpdate(s_mark);
     }
-    catch (std::exception& ex)
-    {
-        err = 1;
-        theUI->NXMessageBox()->Show("secondUI",
-            NXOpen::NXMessageBox::DialogTypeError, ex.what());
-    }
-    return err;
+    s_mark = theSession->SetUndoMark(Session::MarkVisibilityInvisible, "");
+    s_applied = true;
+    return 0;
 }
+
 //----------------------------------------------------------------------
 int secondUI::update_cb(NXOpen::BlockStyler::UIBlock* block)
 {
@@ -144,18 +123,39 @@ int secondUI::update_cb(NXOpen::BlockStyler::UIBlock* block)
     {
         if (block == button0) { m_opMode = 0; }
         else if (block == button01) { m_opMode = 1; }
+        else return 0;
+
+        Body *body = GetBody(selection0);
+        if (!body) throw std::runtime_error("Select a body.");
+        Point3d target = point01->Point();
+        Part *wp = theSession->Parts()->Work();
+        if (!wp) throw std::runtime_error("No work part.");
+
+        if (m_opMode == 0) body->Blank();  // Hide old body
+        auto bb = wp->Features()->CreateBlockFeatureBuilder(nullptr);
+        bb->SetOriginAndLengths(Point3d(target.X-50,target.Y-50,target.Z-50),
+            "100","100","100");
+        bb->CommitFeature();
+        bb->Destroy();
+        theSession->UpdateManager()->DoUpdate(s_mark);
+        s_applied = false;
     }
     catch(exception& ex) { secondUI::theUI->NXMessageBox()->Show("Block Styler",
         NXOpen::NXMessageBox::DialogTypeError, ex.what()); }
     return 0;
 }
 
-int secondUI::ok_cb()
+int secondUI::ok_cb() { return 0; }
+
+int secondUI::cancel_cb()
 {
-    int ec = 0;
-    try { ec = apply_cb(); }
-    catch (exception& ex) { ec = 1; }
-    return ec;
+    if (!s_applied) {
+        Body *oldBody = GetBody(selection0);
+        if (oldBody) oldBody->Unblank();
+        try { theSession->UndoToMark(s_mark, NULL); }
+        catch (...) {}
+    }
+    return 0;
 }
 
 PropertyList* secondUI::GetBlockProperties(const char *id) { return theDialog->GetBlockProperties(id); }
