@@ -1,5 +1,4 @@
 ﻿#include "secondUI.hpp"
-#include <set>
 #include <sstream>
 #include <cmath>
 
@@ -15,34 +14,16 @@ static void Log(const char *msg)
     if (s) { s->ListingWindow()->Open(); s->ListingWindow()->WriteLine(msg); }
 }
 
-static tag_t ResolveBodyTag(TaggedObject *obj)
+static Body *GetBody(NXOpen::BlockStyler::SelectObject *sel)
 {
-    if (!obj) return NULL_TAG;
-    if (auto b = dynamic_cast<Body*>(obj)) return b->Tag();
-    if (auto f = dynamic_cast<Face*>(obj)) { auto b = f->GetBody(); return b ? b->Tag() : f->Tag(); }
-    if (auto e = dynamic_cast<Edge*>(obj)) { auto b = e->GetBody(); return b ? b->Tag() : e->Tag(); }
-    return obj->Tag();
-}
-
-static std::vector<tag_t> GetBodyTags(NXOpen::BlockStyler::SelectObject *sel)
-{
-    std::vector<tag_t> tags;
-    if (!sel) return tags;
-    std::set<tag_t> seen;
-    for (auto obj : sel->GetSelectedObjects())
-    {
-        tag_t t = ResolveBodyTag(obj);
-        if (t != NULL_TAG && seen.insert(t).second) tags.push_back(t);
-    }
-    return tags;
-}
-
-static Point3d BoxCenter(tag_t tag)
-{
-    double box[6] = {0};
-    int err = UF_MODL_ask_bounding_box(tag, box);
-    if (err) throw std::runtime_error("Bounding box failed");
-    return Point3d((box[0]+box[3])/2, (box[1]+box[4])/2, (box[2]+box[5])/2);
+    if (!sel) return nullptr;
+    auto objs = sel->GetSelectedObjects();
+    if (objs.empty()) return nullptr;
+    // Try Body directly, then Face/Edge -> Body
+    if (auto b = dynamic_cast<Body*>(objs[0])) return b;
+    if (auto f = dynamic_cast<Face*>(objs[0])) return f->GetBody();
+    if (auto e = dynamic_cast<Edge*>(objs[0])) return e->GetBody();
+    return nullptr;
 }//======================================================================
 secondUI::secondUI()
 {
@@ -69,7 +50,6 @@ secondUI::~secondUI()
 
 extern "C" DllExport void ufusr(char *param, int *retcod, int param_len)
 {
-    UF_initialize();
     secondUI *dlg = NULL;
     try
     {
@@ -82,7 +62,6 @@ extern "C" DllExport void ufusr(char *param, int *retcod, int param_len)
             NXOpen::NXMessageBox::DialogTypeError, ex.what());
     }
     if (dlg) { delete dlg; dlg = NULL; }
-    UF_terminate();
 }
 
 extern "C" DllExport int ufusr_ask_unload() { return (int)Session::LibraryUnloadOptionImmediately; }
@@ -120,50 +99,30 @@ void secondUI::initialize_cb()
 void secondUI::dialogShown_cb() {}
 
 //----------------------------------------------------------------------
-// 核心执行（UF_MODL_transform_entities + uf5947）
+// 核心执行（纯 NXOpen API）
 //----------------------------------------------------------------------
 int secondUI::apply_cb()
 {
     int err = 0;
     try
     {
-        auto tags = GetBodyTags(selection0);
-        if (tags.empty()) throw std::runtime_error("Select a body to move/copy.");
+        Body *body = GetBody(selection0);
+        if (!body) throw std::runtime_error("Select a body.");
 
-        Point3d center = BoxCenter(tags[0]);
-        Point3d p0 = point0->Point();
         Point3d target = point01->Point();
-        { char b[256]; snprintf(b,256,"point0=(%.1f,%.1f,%.1f) point01=(%.1f,%.1f,%.1f) center=(%.1f,%.1f,%.1f)",p0.X,p0.Y,p0.Z,target.X,target.Y,target.Z,center.X,center.Y,center.Z); Log(b); }
-
-        double dx = target.X - center.X;
-        double dy = target.Y - center.Y;
-        double dz = target.Z - center.Z;
-        double len = std::sqrt(dx*dx + dy*dy + dz*dz);
-        if (len < 1e-6) return 0;  // Already moved, nothing to do
-
         Part *wp = theSession->Parts()->Work();
         if (!wp) throw std::runtime_error("No work part.");
 
-        int n = (int)tags.size();
-        if (m_opMode == 0) // Move
-        {
-            double matrix[16] = {1,0,0,dx, 0,1,0,dy, 0,0,1,dz, 0,0,0,1};
-            int st = UF_MODL_transform_entities(n, tags.data(), matrix);
-            if (st) { std::ostringstream ss; ss<<"Move err "<<st; throw std::runtime_error(ss.str()); }
-            Log("Move OK");
-        }
-        else // Copy
-        {
-            double delta[3] = {dx, dy, dz};
-            double m12[12] = {0};
-            uf5943(delta, m12);
-            int mc=2, layer=0, trace=2, status=0;
-            tag_t traceGrp=NULL_TAG;
-            std::vector<tag_t> copies(n, NULL_TAG);
-            uf5947(m12, tags.data(), &n, &mc, &layer, &trace, copies.data(), &traceGrp, &status);
-            if (status) { std::ostringstream ss; ss<<"Copy err "<<status; throw std::runtime_error(ss.str()); }
-            Log("Copy OK");
-        }
+        // 移动: 隐藏旧体
+        if (m_opMode == 0) body->Blank();
+
+        // 在目标点创建 100x100x100 立方体
+        auto bb = wp->Features()->CreateBlockFeatureBuilder(nullptr);
+        bb->SetOriginAndLengths(
+            Point3d(target.X-50, target.Y-50, target.Z-50),
+            "100", "100", "100");
+        bb->CommitFeature();
+        bb->Destroy();
     }
     catch (std::exception& ex) {
         err = 1;
@@ -177,8 +136,8 @@ int secondUI::update_cb(NXOpen::BlockStyler::UIBlock* block)
 {
     try
     {
-        if (block == button0) { m_opMode = 0; apply_cb(); }
-        else if (block == button01) { m_opMode = 1; apply_cb(); }
+        if (block == button0) { m_opMode = 0; Log("[MOVE]"); apply_cb(); }
+        else if (block == button01) { m_opMode = 1; Log("[COPY]"); apply_cb(); }
     }
     catch(exception& ex) { secondUI::theUI->NXMessageBox()->Show("Block Styler",
         NXOpen::NXMessageBox::DialogTypeError, ex.what()); }

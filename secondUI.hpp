@@ -19,11 +19,6 @@
 //------------------------------------------------------------------------------
 //These includes are needed for the following template code
 //------------------------------------------------------------------------------
-#include <uf_modl.h>
-#include <uf_obj.h>
-#include <uf_ui.h>
-#include <uf_trns.h>
-#include <uf.h>
 #include <uf_defs.h>
 #include <iostream>
 #include <NXOpen/Session.hxx>
@@ -89,21 +84,17 @@ private:
 
     // Dialog controls
     NXOpen::BlockStyler::Group* group3;
-    NXOpen::BlockStyler::Button* button0;    // Create Cube
+    NXOpen::BlockStyler::Button* button0;    // Move
     NXOpen::BlockStyler::Button* button01;   // Execute Move/Copy
     NXOpen::BlockStyler::Group* group2;
     NXOpen::BlockStyler::SelectObject* selection0;  // Source body selection
     NXOpen::BlockStyler::Group* group1;
-    NXOpen::BlockStyler::SpecifyPoint* point0;      // Target point
+    NXOpen::BlockStyler::SpecifyPoint* point0;      // (unused)
     NXOpen::BlockStyler::Enumeration* enum0;         // Mode: Move/Copy
     int m_opMode;
         NXOpen::BlockStyler::Group* group;
     NXOpen::BlockStyler::SpecifyPoint* point01;      // Source point (optional)
     NXOpen::BlockStyler::Enumeration* enum01;        // Other mode (optional)
 
-    // Tracking variables
-    NXOpen::Features::Feature *sourceFeat;       // Selected source body
-    double targetPoint[3];          // Target point coordinates
-    int operationMode;               // 0 = Move, 1 = Copy
 };
 #endif //SECONDUI_H_INCLUDED
