@@ -1,0 +1,16 @@
+﻿display_name: "🔍 Smoothness Pipeline v1.0"
+short_description: "分型面光顺性三步工作流: 审查(mark_review.dll) → 修复(mark_final.dll) → 手动收尾"
+default_prompt: "运行分型面光顺性审查流水线。读取 ai_workflow.py 了解 API，或直接执行 run_full_pipeline()。首先检查 inspect_config.txt 里的输入路径是否正确，然后在 NX 中用 Ctrl+U 依次运行两个 DLL。"
+domain: [nx-cpp-development]
+steps:
+  - name: "Phase 1: 审查+标记"
+    dll: dll/mark_review.dll
+    action: "v36检测 + 绿色标记"
+    output: "绿色标记的PRT + 控制台统计"
+  - name: "Phase 2: 修复"
+    dll: dll/mark_final.dll
+    action: "边合并 + 删愈 + 补孔(G0)"
+    output: "修复后的PRT"
+  - name: "Phase 3: 手动收尾"
+    action: "用户选中绿色面 → 删除面(Heal=true)"
+    note: "残余绿面需交互处理"
